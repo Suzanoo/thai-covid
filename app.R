@@ -54,10 +54,12 @@ province_daily0 <- read_csv('data/province_daily.csv')
 province_daily2 <- jsonlite::fromJSON("https://covid19.ddc.moph.go.th/api/Cases/timeline-cases-by-provinces")
 
 THAI_LAST_REPORT <- ymd(max(province_daily0$date))
-thai_new_report <- province_daily2%>%
+thai_new_report <- province_daily2 %>%
   as_tibble() %>%
-  filter(update_date >= THAI_LAST_REPORT)%>%
-  select(update_date)%>%
+  mutate(date = as.Date(paste(weeknum, year, 'Sun'), '%U %Y %a'),
+         ADM1_TH = province) %>%
+  filter(date > THAI_LAST_REPORT)%>%
+  select(date)%>%
   unique()%>%
   pull() #Cast tibble to vector
 
@@ -72,13 +74,13 @@ if(jhu_date != LAST_REPORT) {
   source("world_cv.R", local =TRUE)
 }
 
-if (length(thai_new_report) > 1){
+if (length(thai_new_report) > 0) {
   
   print('[INFO] Updating Thailand report')
   source("thai_cv.R", local =TRUE)
 }
 
-world_daily <- readr::read_csv("data/world_Daily.csv") 
+world_daily <- readr::read_csv("data/world_Daily.csv")
 world_weekly <- readr::read_csv("data/world_Weekly.csv")
 world_monthly <- readr::read_csv("data/world_Monthly.csv")
 
@@ -145,15 +147,12 @@ server <- function(input, output, session) {
     case_choose = "total_case",
     date = max(province_daily$date),
     df = province_daily %>%
-      filter(date <= max(province_daily$date)) %>%
       filter(date == max(date)) %>%
-      # We filter date because if user choose weekly or monthly and date is not match Sunday or month end,
-      # app will shift report on Sunday for weekly and month end for monthly
       select(date, new_case, new_death, total_case, total_death, ADM1_EN),
+    
     df_country = thai_daily,
     
     bins1 =  c(0, 1e4, 2e4, 5e4, 1e5, 2e5, Inf)
-    
   )
   
   observeEvent(input$button1, {
@@ -164,20 +163,23 @@ server <- function(input, output, session) {
                                input$cases == "Total Deaths" ~  "total_death")
     
     # update data select
-    df <- NULL
     if (input$timeline == "Daily"){
-      df <-province_daily
+      X$df <- province_daily %>% 
+        filter(date == input$date) %>% 
+        select(date, new_case, new_death, total_case, total_death, ADM1_EN) 
     }else if (input$timeline == "Weekly"){
-      df <- province_weekly
+      X$df <- province_weekly %>% 
+        # We filter date because if user choose weekly or monthly and date is not match Sunday or month end,
+        # app will shift report on Sunday for weekly and month end for monthly
+        filter(date < input$date) %>%
+        filter(date == max(date)) %>%
+        select(date, new_case, new_death, total_case, total_death, ADM1_EN) 
     }else if (input$timeline == "Monthly"){
-      df <-province_monthly
+      X$df <-province_monthly %>% 
+        filter(date < input$date) %>%
+        filter(date == max(date)) %>%
+        select(date, new_case, new_death, total_case, total_death, ADM1_EN) 
     }
-    X$df <- df %>%
-      filter(date <= input$date) %>%
-      filter(date == max(date)) %>%
-      # We filter date because if user choose weekly or monthly and date is not match Sunday or month end,
-      # app will shift report on Sunday for weekly and month end for monthly
-      select(date, new_case, new_death, total_case, total_death, ADM1_EN) 
     
     # update data select
     if (input$timeline == "Daily"){
@@ -210,11 +212,14 @@ server <- function(input, output, session) {
     value <- X$df %>%
       select(matches("new_case")) %>%
       pull() %>% sum()
+    
+    date <- X$df %>% select(date) %>% pull() %>% max()
+    
     vbox_render(value,
                 X$df_country,
-                label = "new_case" ,
+                label = paste0("new_case") ,
                 chart_type = "area",
-                subtitle = paste0(input$timeline, " Report"),
+                subtitle = paste0(input$timeline, " Report on :", date),
                 info = "|||",
                 icon = icon("plane"),
                 color = "teal"
@@ -225,11 +230,14 @@ server <- function(input, output, session) {
     value <- X$df %>%
       select(matches("new_death")) %>%
       pull() %>% sum()
+    
+    date <- X$df %>% select(date) %>% pull() %>% max()
+    
     vbox_render(value,
                 X$df_country,
-                label = "new_death" ,
+                label = "new_death",
                 chart_type = "area",
-                subtitle = paste0(input$timeline, " Report"),
+                subtitle = paste0(input$timeline, " Report on :", date),
                 info = "|||",
                 icon = icon("plane"),
                 color = "orange"
@@ -240,11 +248,14 @@ server <- function(input, output, session) {
     value <- X$df %>%
       select(matches("total_case")) %>%
       pull() %>% sum()
+    
+    date <- X$df %>% select(date) %>% pull() %>% max()
+    
     vbox_render(value,
                 X$df_country,
                 label = "total_case" ,
                 chart_type = "line",
-                subtitle = paste0(input$timeline, " Report"),
+                subtitle = paste0(input$timeline, " Report on :", date),
                 info = "|||",
                 icon = icon("plane"),
                 color = "olive"
@@ -255,11 +266,14 @@ server <- function(input, output, session) {
     value <- X$df %>%
       select(matches("total_death")) %>%
       pull() %>% sum()
+    
+    date <- X$df %>% select(date) %>% pull() %>% max()
+    
     vbox_render(value,
                 X$df_country,
                 label = "total_death" ,
                 chart_type = "line",
-                subtitle = paste0(input$timeline, " Report"),
+                subtitle = paste0(input$timeline, " Report on :", date),
                 info = "|||",
                 icon = icon("plane"),
                 color = "red"
