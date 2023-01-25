@@ -46,6 +46,13 @@ LAST_REPORT <- lubridate::ymd(max(world_daily$date))
 print(paste0("[INFO] JHU Report :  ", jhu_date))
 print(paste0("[INFO] World last Report :  ", LAST_REPORT))
 
+## Process if there are new cases from Johns Hopkins
+if(jhu_date != LAST_REPORT) {
+  
+  print('[INFO] Updating World report')
+  source("world_cv.R", local =TRUE)
+}
+
 # =--------------------------------
 # check Thai update
 province_daily0 <- read_csv('data/province_daily.csv')
@@ -66,14 +73,6 @@ thai_new_report <- province_daily2 %>%
 print(paste0("[INFO] THA last Report :  ", THAI_LAST_REPORT))
 print(paste0("[INFO] THA new Report :  ", max(thai_new_report)))
 # =--------------------------------
-
-## Process if there are new cases from Johns Hopkins
-if(jhu_date != LAST_REPORT) {
-  
-  print('[INFO] Updating World report')
-  source("world_cv.R", local =TRUE)
-}
-
 if (length(thai_new_report) > 0) {
   
   print('[INFO] Updating Thailand report')

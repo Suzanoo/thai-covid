@@ -50,7 +50,7 @@ THAI_LAST_REPORT <- ymd(max(province_daily0$date))
 # -----------------------------
 province <- read_csv('data/province.csv')
 
-# # get population
+## get population
 pop <- readr::read_csv("data/thai_population_2020.csv") %>%
   na.omit()%>%
   mutate(ADM1_PCODE= str_to_upper(ADM1_Pcode))%>%
